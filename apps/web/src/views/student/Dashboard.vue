@@ -167,7 +167,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onActivated, onBeforeUnmount } from 'vue';
-import { useRouter, onBeforeRouteEnter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import { apiFetch, isApiError } from '../../services/http';
 

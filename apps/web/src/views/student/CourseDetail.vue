@@ -308,17 +308,36 @@ import { useRoute, useRouter } from 'vue-router'
 import { apiFetch, isApiError } from '../../services/http'
 import { useAuthStore } from '../../stores/auth'
 import Hls from 'hls.js'
+import type { Course, Lesson, Module, Question, Quiz, QuizResultDto } from '@autoon/types'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const course = ref<any>(null)
+type ModuleWithLessons = Module & {
+  lessons?: Lesson[]
+  quizzes?: Quiz[]
+}
+
+type CourseWithLessons = Course & {
+  modules?: ModuleWithLessons[]
+}
+
+type QuizWithQuestions = Quiz & {
+  questions: Question[]
+}
+
+interface ProgressPayload {
+  unlockedLessonIds?: string[]
+  completedLessonIds?: string[]
+}
+
+const course = ref<CourseWithLessons | null>(null)
 const loading = ref(false)
 const error = ref('')
 const showPlayerModal = ref(false)
-const activeLesson = ref<any | null>(null)
-const activeModule = ref<any | null>(null)
+const activeLesson = ref<Lesson | null>(null)
+const activeModule = ref<ModuleWithLessons | null>(null)
 const playerLoading = ref(false)
 const playerError = ref('')
 const playerUrl = ref('')
@@ -329,13 +348,13 @@ let lastPosition = 0
 
 // Quiz state
 const showQuizModal = ref(false)
-const activeQuiz = ref<any | null>(null)
+const activeQuiz = ref<Quiz | null>(null)
 const quizLoading = ref(false)
 const quizError = ref('')
-const quizQuestions = ref<any[]>([])
+const quizQuestions = ref<Question[]>([])
 const quizAnswers = ref<Record<string, string[]>>({})
 const quizSubmitting = ref(false)
-const quizResult = ref<any | null>(null)
+const quizResult = ref<QuizResultDto | null>(null)
 
 // Progress state
 const unlockedLessonIds = ref<Set<string>>(new Set())
@@ -348,10 +367,10 @@ const loadCourse = async () => {
   loading.value = true
   error.value = ''
   try {
-    const data = await apiFetch(`/courses/${route.params.id}`, {
+    const courseData = await apiFetch<CourseWithLessons>(`/courses/${route.params.id}`, {
       token: authStore.accessToken,
     })
-    course.value = data
+    course.value = courseData
 
     // Verifica se está matriculado e matricula se necessário
     await ensureEnrollment()
@@ -391,7 +410,7 @@ const loadProgress = async () => {
 
   progressLoading.value = true
   try {
-    const data = await apiFetch(`/progress/course/${route.params.id}/unlocked`, {
+    const data = await apiFetch<ProgressPayload>(`/progress/course/${route.params.id}/unlocked`, {
       token: authStore.accessToken,
     })
 
@@ -402,8 +421,9 @@ const loadProgress = async () => {
   } catch (err) {
     console.error('Erro ao carregar progresso:', err)
     // Se der erro, desbloqueia a primeira aula
-    if (course.value?.modules?.[0]?.lessons?.[0]) {
-      unlockedLessonIds.value = new Set([course.value.modules[0].lessons[0].id])
+    const firstLesson = course.value?.modules?.[0]?.lessons?.[0]
+    if (firstLesson?.id) {
+      unlockedLessonIds.value = new Set([firstLesson.id])
     }
   } finally {
     progressLoading.value = false
@@ -418,21 +438,19 @@ const isLessonCompleted = (lessonId: string) => {
   return completedLessonIds.value.has(lessonId)
 }
 
-const getModuleProgress = (module: any) => {
-  if (!module.lessons || module.lessons.length === 0) return 0
+const getModuleProgress = (module: ModuleWithLessons | null) => {
+  if (!module?.lessons || module.lessons.length === 0) return 0
 
-  const completedCount = module.lessons.filter((lesson: any) =>
-    isLessonCompleted(lesson.id)
-  ).length
+  const completedCount = module.lessons.filter((lesson: Lesson) => isLessonCompleted(lesson.id)).length
 
   return Math.round((completedCount / module.lessons.length) * 100)
 }
 
-const isModuleCompleted = (module: any) => {
-  if (!module.lessons || module.lessons.length === 0) return false
+const isModuleCompleted = (module: ModuleWithLessons | null) => {
+  if (!module?.lessons || module.lessons.length === 0) return false
 
   // Verifica se TODAS as aulas do módulo foram concluídas
-  return module.lessons.every((lesson: any) => isLessonCompleted(lesson.id))
+  return module.lessons.every((lesson: Lesson) => isLessonCompleted(lesson.id))
 }
 
 const stopHeartbeat = () => {
@@ -675,7 +693,7 @@ const onVideoEnded = async () => {
   }
 }
 
-const startLesson = async (lesson: any, moduleData: any) => {
+const startLesson = async (lesson: Lesson, moduleData: ModuleWithLessons) => {
   if (!lesson.videoId) {
     window.alert('Esta aula ainda nao possui video.')
     return
@@ -735,7 +753,7 @@ const closePlayer = () => {
   videoDuration.value = 0
 }
 
-const showQuizAfterVideo = async (quiz: any) => {
+const showQuizAfterVideo = async (quiz: Quiz) => {
   console.log('=== Mostrando quiz ===')
   console.log('Quiz:', quiz)
 
@@ -752,11 +770,11 @@ const showQuizAfterVideo = async (quiz: any) => {
 
   try {
     // Busca as questões do quiz
-    const data = await apiFetch(`/quizzes/${quiz.id}`, {
+    const data = await apiFetch<QuizWithQuestions>(`/quizzes/${quiz.id}`, {
       token: authStore.accessToken,
     })
     console.log('Questões carregadas:', data)
-    quizQuestions.value = data?.questions || []
+    quizQuestions.value = data.questions || []
 
     // Inicializa respostas vazias
     quizQuestions.value.forEach(question => {
@@ -811,7 +829,7 @@ const submitQuiz = async () => {
 
     console.log('Enviando respostas:', answers)
 
-    const data = await apiFetch(`/quizzes/${activeQuiz.value.id}/submit`, {
+    const data = await apiFetch<QuizResultDto>(`/quizzes/${activeQuiz.value.id}/submit`, {
       method: 'POST',
       token: authStore.accessToken,
       body: JSON.stringify({ answers }),

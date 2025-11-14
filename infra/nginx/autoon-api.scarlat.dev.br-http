@@ -1,0 +1,67 @@
+# Backend API - autoon-api.scarlat.dev.br (HTTP only - use antes de obter SSL)
+upstream autoon_api {
+    server autoon-api-prod:3000;
+    # Se não estiver usando Docker, use: server localhost:3000;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    server_name autoon-api.scarlat.dev.br;
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+
+    # CORS headers (ajuste conforme necessário)
+    add_header Access-Control-Allow-Origin "http://autoon.scarlat.dev.br" always;
+    add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH" always;
+    add_header Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization" always;
+    add_header Access-Control-Allow-Credentials "true" always;
+
+    # Handle preflight requests
+    if ($request_method = OPTIONS) {
+        return 204;
+    }
+
+    # Client body size for video uploads
+    client_max_body_size 6G;
+    client_body_timeout 300s;
+    client_header_timeout 300s;
+
+    # Timeouts for long-running requests
+    proxy_connect_timeout 300s;
+    proxy_send_timeout 300s;
+    proxy_read_timeout 300s;
+    send_timeout 300s;
+
+    # Proxy to API
+    location / {
+        proxy_pass http://autoon_api;
+        proxy_http_version 1.1;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $server_name;
+
+        proxy_cache_bypass $http_upgrade;
+        proxy_buffering off;
+        proxy_request_buffering off;
+    }
+
+    # Health check endpoint
+    location /health {
+        access_log off;
+        proxy_pass http://autoon_api/health;
+    }
+
+    # Access and error logs
+    access_log /var/log/nginx/autoon-api.access.log;
+    error_log /var/log/nginx/autoon-api.error.log;
+}

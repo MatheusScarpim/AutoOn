@@ -36,7 +36,7 @@ export const useAuthStore = defineStore('auth', {
       state.user?.name
         ? state.user.name
             .split(' ')
-            .map((chunk) => chunk[0])
+            .map((chunk: string) => chunk[0])
             .slice(0, 2)
             .join('')
             .toUpperCase()

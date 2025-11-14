@@ -190,26 +190,34 @@ docker run --rm \
 - [ ] Rate limiting configurado
 - [ ] CORS configurado corretamente
 
-### Configurar HTTPS com Let's Encrypt (Opcional)
+### Configurar HTTPS com Let's Encrypt e Nginx
 
-Recomendamos usar **Traefik** ou **Nginx** como reverse proxy com Let's Encrypt.
+As configurações do Nginx estão em `infra/nginx/` com suporte para os domínios:
+- Frontend: https://autoon.scarlat.dev.br
+- API: https://autoon-api.scarlat.dev.br
 
-Exemplo básico com Nginx:
+#### Configuração rápida:
 
-```yaml
-# Adicione ao docker-compose.prod.yml
-  nginx-proxy:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/ssl:/etc/nginx/ssl
-    depends_on:
-      - web
-      - api
+```bash
+# 1. Copiar arquivos de configuração (se ainda não fez)
+cd infra/nginx
+sudo cp autoon.scarlat.dev.br.conf /etc/nginx/sites-available/
+sudo cp autoon-api.scarlat.dev.br.conf /etc/nginx/sites-available/
+
+# 2. Criar links simbólicos
+sudo ln -s /etc/nginx/sites-available/autoon.scarlat.dev.br.conf /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/autoon-api.scarlat.dev.br.conf /etc/nginx/sites-enabled/
+
+# 3. Obter certificados SSL
+sudo certbot --nginx -d autoon.scarlat.dev.br
+sudo certbot --nginx -d autoon-api.scarlat.dev.br
+
+# 4. Testar e reiniciar
+sudo nginx -t
+sudo systemctl restart nginx
 ```
+
+Veja `infra/nginx/README.md` para instruções completas.
 
 ## 📊 Monitoramento
 
