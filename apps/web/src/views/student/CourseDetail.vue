@@ -255,20 +255,20 @@
             <div class="space-y-2">
               <label
                 v-for="option in question.options"
-                :key="option"
+                :key="option.id"
                 class="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition"
-                :class="{ 'bg-primary-50 border-primary-300': quizAnswers[question.id]?.includes(option) }"
+                :class="{ 'bg-primary-50 border-primary-300': quizAnswers[question.id]?.includes(option.id) }"
               >
                 <input
                   :type="question.type === 'SINGLE_CHOICE' || question.type === 'TRUE_FALSE' ? 'radio' : 'checkbox'"
                   :name="'question-' + question.id"
-                  :value="option"
-                  :checked="quizAnswers[question.id]?.includes(option)"
-                  @change="toggleAnswer(question.id, option, question.type)"
+                  :value="option.id"
+                  :checked="quizAnswers[question.id]?.includes(option.id)"
+                  @change="toggleAnswer(question.id, option.id, question.type)"
                   :disabled="quizSubmitting || quizResult !== null"
                   class="w-4 h-4"
                 />
-                <span class="text-sm text-gray-900">{{ option }}</span>
+                <span class="text-sm text-gray-900">{{ option.text }}</span>
               </label>
             </div>
           </div>
@@ -788,21 +788,21 @@ const showQuizAfterVideo = async (quiz: Quiz) => {
   }
 }
 
-const toggleAnswer = (questionId: string, answer: string, questionType: string) => {
+const toggleAnswer = (questionId: string, answerId: string, questionType: string) => {
   if (!quizAnswers.value[questionId]) {
     quizAnswers.value[questionId] = []
   }
 
   if (questionType === 'SINGLE_CHOICE' || questionType === 'TRUE_FALSE') {
     // Resposta única - substitui
-    quizAnswers.value[questionId] = [answer]
+    quizAnswers.value[questionId] = [answerId]
   } else {
     // Resposta múltipla - toggle
-    const index = quizAnswers.value[questionId].indexOf(answer)
+    const index = quizAnswers.value[questionId].indexOf(answerId)
     if (index > -1) {
       quizAnswers.value[questionId].splice(index, 1)
     } else {
-      quizAnswers.value[questionId].push(answer)
+      quizAnswers.value[questionId].push(answerId)
     }
   }
 }
