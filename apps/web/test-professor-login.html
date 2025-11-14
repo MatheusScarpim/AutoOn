@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste Login Professor - AutoOn</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        button { display: block; width: 100%; margin: 10px 0; padding: 10px; font-size: 16px; background: #7c3aed; color: white; border: none; cursor: pointer; border-radius: 8px; }
+        button:hover { background: #6b21a8; }
+        #result { margin-top: 20px; padding: 15px; border-radius: 8px; white-space: pre-wrap; font-family: monospace; }
+        .success { background: #d1fae5; border: 1px solid #10b981; }
+        .error { background: #fee2e2; border: 1px solid #ef4444; }
+    </style>
+</head>
+<body>
+    <h2>🧪 Teste Login Professor - AutoOn</h2>
+    <p><strong>Email:</strong> professor@autoon.com</p>
+    <p><strong>Senha:</strong> professor123</p>
+
+    <button onclick="testarLoginProfessor()">Testar Login do Professor</button>
+
+    <div id="result"></div>
+
+    <script>
+        async function testarLoginProfessor() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '🔄 Fazendo login...';
+            resultDiv.className = '';
+
+            try {
+                console.log('📤 Tentando login como professor...');
+
+                const response = await fetch('http://localhost:3000/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'professor@autoon.com',
+                        password: 'professor123'
+                    })
+                });
+
+                console.log('📥 Status:', response.status);
+
+                const data = await response.json();
+                console.log('📦 Resposta completa:', data);
+
+                if (response.ok) {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `✅ LOGIN COM SUCESSO!
+
+📋 DADOS DO USUÁRIO:
+   Nome: ${data.user.name}
+   Email: ${data.user.email}
+   Role: ${data.user.role}
+   ID: ${data.user.id}
+
+🔑 TOKEN:
+   Access Token: ${data.accessToken.substring(0, 50)}...
+
+🎯 REDIRECIONAMENTO:
+   Role atual: ${data.user.role}
+   Deveria ir para: ${data.user.role === 'ADMIN' || data.user.role === 'INSTRUCTOR' ? '/admin' : '/dashboard'}
+
+${data.user.role === 'INSTRUCTOR' ? '✅ ROLE CORRETO! Deveria ir para painel /admin' : '❌ ROLE INCORRETO! Role não é INSTRUCTOR'}`;
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `❌ ERRO ${response.status}
+
+${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                console.error('💥 Erro:', error);
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `💥 ERRO DE REDE:
+
+${error.message}`;
+            }
+        }
+
+        // Auto-executar ao carregar
+        window.onload = testarLoginProfessor;
+    </script>
+</body>
+</html>

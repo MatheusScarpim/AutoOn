@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(if [ -d \"node_modules\" ])",
+      "Bash(then echo \"Dependencies installed\")",
+      "Bash(else echo \"Dependencies not installed\")",
+      "Bash(fi)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm prisma generate:*)",
+      "Bash(pnpm build:*)",
+      "Bash(node start-dev.js:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(docker compose ps:*)",
+      "Bash(pnpm --filter @autoon/api prisma db push:*)",
+      "Bash(pnpm prisma db push:*)",
+      "Bash(docker exec:*)",
+      "Bash(timeout 3 curl:*)",
+      "Bash(if [ -f \"C:\\Users\\matheus.cuan\\Documents\\AutoOn\\README.md\" ])",
+      "Bash(then echo \"Exists\")",
+      "Bash(else echo \"Not exists\")",
+      "Bash(pnpm db:migrate:*)",
+      "Bash(pnpm prisma migrate:*)",
+      "Bash(docker restart:*)",
+      "Bash(nul)",
+      "Bash(timeout 5 curl:*)",
+      "Bash(pnpm --filter @autoon/api build:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd /c \"taskkill /F /PID 55620\")",
+      "Bash(docker ps:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(if [ -f \"nul\" ])",
+      "Bash(then rm nul)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

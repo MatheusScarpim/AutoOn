@@ -1,0 +1,27 @@
+{
+  "name": "autoon-ead",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plataforma EAD para autoescola com streaming HLS",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "db:migrate": "pnpm --filter @autoon/api db:migrate",
+    "db:seed": "pnpm --filter @autoon/api db:seed",
+    "generate:cert": "mkcert localhost 127.0.0.1"
+  },
+  "devDependencies": {
+    "turbo": "^1.13.0",
+    "prettier": "^3.2.5",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.4"
+}

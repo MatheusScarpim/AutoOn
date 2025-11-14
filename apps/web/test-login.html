@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste Login AutoOn</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; }
+        input, button { display: block; width: 100%; margin: 10px 0; padding: 10px; font-size: 16px; }
+        button { background: #7c3aed; color: white; border: none; cursor: pointer; border-radius: 8px; }
+        button:hover { background: #6b21a8; }
+        #result { margin-top: 20px; padding: 15px; border-radius: 8px; }
+        .success { background: #d1fae5; border: 1px solid #10b981; }
+        .error { background: #fee2e2; border: 1px solid #ef4444; }
+    </style>
+</head>
+<body>
+    <h2>🧪 Teste de Login - AutoOn</h2>
+
+    <input type="email" id="email" placeholder="Email" value="teste@autoon.com">
+    <input type="password" id="password" placeholder="Senha" value="senha123">
+    <button onclick="testarLogin()">Testar Login</button>
+
+    <div id="result"></div>
+
+    <script>
+        async function testarLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+
+            resultDiv.innerHTML = 'Enviando...';
+            resultDiv.className = '';
+
+            try {
+                console.log('📤 Enviando requisição...');
+                console.log('Email:', email);
+                console.log('Password:', password);
+
+                const response = await fetch('http://localhost:3000/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                console.log('📥 Status:', response.status);
+
+                const data = await response.json();
+                console.log('📦 Resposta:', data);
+
+                if (response.ok) {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <strong>✅ Login com sucesso!</strong><br>
+                        <small>Nome: ${data.user.name}</small><br>
+                        <small>Email: ${data.user.email}</small><br>
+                        <small>Role: ${data.user.role}</small><br>
+                        <small>Token: ${data.accessToken.substring(0, 20)}...</small>
+                    `;
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML = `
+                        <strong>❌ Erro ${response.status}</strong><br>
+                        ${data.message || 'Erro desconhecido'}
+                    `;
+                }
+            } catch (error) {
+                console.error('💥 Erro:', error);
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `<strong>💥 Erro de rede:</strong><br>${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
