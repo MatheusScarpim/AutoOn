@@ -2,6 +2,31 @@
 
 Plataforma completa de EAD para autoescolas com streaming HLS, quizzes, certificados e relatórios.
 
+## 🚀 Início Rápido
+
+Quer começar agora? Em **3 comandos** você tem tudo rodando:
+
+```bash
+# 1. Copiar variáveis de ambiente
+cp .env.example .env
+
+# 2. Subir tudo com Docker
+docker compose up -d
+
+# 3. Aguardar inicialização (1-2 min) e acessar
+# Frontend: http://localhost:5173
+# API: http://localhost:3000
+# Swagger: http://localhost:3000/api/docs
+```
+
+**Primeira vez usando Docker?** Veja o [Guia de Início Rápido completo](QUICKSTART.md) com explicações passo a passo.
+
+**Precisa rebuildar?** Se você já rodou antes e está tendo problemas:
+```bash
+docker compose down
+docker compose up -d --build
+```
+
 ## Arquitetura do Projeto
 
 Este é um monorepo usando **pnpm workspaces** e **Turborepo** com a seguinte estrutura:
@@ -30,7 +55,7 @@ autoon-ead/
 - **Autenticação**: JWT + Passport
 - **Validação**: Zod + class-validator
 - **Filas**: BullMQ + Redis
-- **Storage**: MinIO (S3-compatible)
+- **Storage**: Azure Blob Storage
 - **Transcodificação**: FFmpeg
 - **Logs**: Pino
 
@@ -46,7 +71,7 @@ autoon-ead/
 ### Infraestrutura
 - **Containerização**: Docker + Docker Compose
 - **Cache/Filas**: Redis
-- **Storage de objetos**: MinIO
+- **Storage de objetos**: Azure Blob Storage
 - **Banco de dados**: PostgreSQL
 
 ## Pré-requisitos
@@ -84,15 +109,20 @@ JWT_REFRESH_SECRET="your-super-secret-refresh-key-change-in-production"
 JWT_EXPIRES_IN="15m"
 JWT_REFRESH_EXPIRES_IN="7d"
 
-# MinIO (S3)
-MINIO_ENDPOINT="localhost"
-MINIO_PORT=9000
-MINIO_USE_SSL=false
-MINIO_ACCESS_KEY="minioadmin"
-MINIO_SECRET_KEY="minioadmin"
-MINIO_BUCKET_UPLOADS="uploads"
-MINIO_BUCKET_VIDEOS="videos"
-MINIO_BUCKET_CERTIFICATES="certificates"
+# Storage (Azure Blob)
+STORAGE_PROVIDER="AZURE"
+AZURE_STORAGE_ACCOUNT="your-storage-account"
+AZURE_STORAGE_KEY="your-storage-key"
+AZURE_STORAGE_CONTAINER="autoon-videos"
+AZURE_STORAGE_ENDPOINT_SUFFIX="core.windows.net"
+AZURE_STORAGE_ENDPOINT="https://your-storage-account.blob.core.windows.net"
+AZURE_UPLOAD_URL_TTL_SECONDS=3600
+AZURE_AUTO_CONFIGURE_CORS=true
+AZURE_CORS_ALLOWED_ORIGINS="http://localhost:5173"
+AZURE_CORS_ALLOWED_METHODS="GET,HEAD,PUT,POST,DELETE,OPTIONS"
+AZURE_CORS_ALLOWED_HEADERS="*"
+AZURE_CORS_EXPOSED_HEADERS="*"
+AZURE_CORS_MAX_AGE=3600
 
 # Redis
 REDIS_HOST="localhost"
@@ -125,36 +155,113 @@ VITE_APP_NAME="AutoOn EAD"
 
 ### 4. Subir a infraestrutura
 
-#### Opção A: Com Docker (Recomendado para começar)
+#### Opção A: Com Docker Compose (Recomendado - Tudo junto)
+
+Esta opção sobe **TODOS** os serviços necessários em containers Docker: PostgreSQL, Redis, API (backend) e Web (frontend), enquanto o Azure Blob Storage é consumido através das credenciais definidas no `.env`.
 
 ```bash
-# Subir PostgreSQL, MinIO e Redis
+# 1. Copiar o arquivo de exemplo de variáveis de ambiente
+cp .env.example .env
+
+# 2. (Opcional) Editar o .env com suas preferências (incluindo as credenciais do Azure Storage)
+# Você pode manter os valores padrão para desenvolvimento local
+
+# 3. Subir todos os serviços (PostgreSQL, Redis, API e Web)
 docker compose up -d
 
-# Verificar logs
+# 4. Acompanhar os logs de todos os serviços
 docker compose logs -f
 
-# Verificar status dos containers
+# 5. Verificar status dos containers
 docker compose ps
 ```
 
-**Acessos:**
-- PostgreSQL: `localhost:5432` (user: autoon, pass: autoon123)
-- MinIO Console: `http://localhost:9001` (user: minioadmin, pass: minioadmin)
-- MinIO API: `http://localhost:9000`
-- Redis: `localhost:6379`
+**O que acontece:**
+- ✅ PostgreSQL é iniciado e cria o banco `autoon`
+- ✅ Redis é iniciado com senha configurada
+- ✅ Azure Blob Storage é configurado via credenciais e o container é criado automaticamente
+- ✅ API (backend) é buildada, aguarda o banco ficar pronto e inicia
+- ✅ Web (frontend) é buildada e servida via Nginx
 
-#### Opção B: Sem Docker (Serviços Cloud)
+**Acessos após inicialização:**
+- **Frontend**: `http://localhost:5173` (porta pode ser alterada no .env via WEB_PORT)
+- **Backend API**: `http://localhost:3000` (porta pode ser alterada no .env via API_PORT)
+- - **Swagger/OpenAPI**: `http://localhost:3000/api/docs`
+- - **Azure Blob Storage**: acesse `https://<sua-conta>.blob.core.windows.net/<container>` ou use o [Azure Storage Explorer](https://learn.microsoft.com/azure/storage/common/storage-explorer)
+- **PostgreSQL**: `localhost:5432` (user: autoon, pass: autoon123, db: autoon)
+- **Redis**: `localhost:6379` (password: redis123)
 
-**Veja o guia completo:** [SETUP_SEM_DOCKER.md](SETUP_SEM_DOCKER.md)
+**Comandos úteis do Docker Compose:**
 
-Resumo rápido:
-1. **PostgreSQL**: Use [Neon](https://neon.tech) ou [Supabase](https://supabase.com) (free)
-2. **Redis**: Use [Upstash](https://upstash.com) (free)
-3. **Storage**: Use [Cloudflare R2](https://cloudflare.com/products/r2) ou MinIO local
-4. Configure as credenciais no `.env`
+```bash
+# Parar todos os serviços (mas manter os volumes/dados)
+docker compose stop
+
+# Reiniciar todos os serviços
+docker compose restart
+
+# Ver logs de um serviço específico
+docker compose logs -f api
+docker compose logs -f web
+docker compose logs -f postgres
+
+# Parar e remover containers (volumes/dados são mantidos)
+docker compose down
+
+# Parar, remover containers E remover volumes (apaga os dados!)
+docker compose down -v
+
+# Recriar apenas um serviço
+docker compose up -d --build api
+
+# Executar comando dentro de um container
+docker compose exec api sh
+docker compose exec postgres psql -U autoon -d autoon
+```
+
+#### Opção B: Docker apenas para infraestrutura (Dev local)
+
+Se você prefere rodar a API e o Web localmente (com hot-reload) e usar Docker apenas para os serviços de infraestrutura:
+
+```bash
+# 1. Subir apenas PostgreSQL e Redis
+docker compose up -d postgres redis
+
+# 2. Configurar variáveis de ambiente para desenvolvimento local (incluindo as credenciais do Azure Storage)
+# Copie apps/api/.env.example para apps/api/.env
+# Copie apps/web/.env para definir VITE_API_URL=http://localhost:3000
+
+# 3. Rodar migrações do banco
+pnpm db:migrate
+
+# 4. (Opcional) Popular banco com dados de exemplo
+pnpm db:seed
+
+# 5. Iniciar API e Web em modo desenvolvimento
+pnpm dev
+```
+
+**Acessos nesta opção:**
+- **Frontend**: `http://localhost:5173` (Vite dev server)
+- **Backend API**: `http://localhost:3000`
+- Demais serviços: mesmos da Opção A
+
+#### Opção C: Sem Docker (Serviços Cloud)
+
+Se não quiser usar Docker, use serviços em cloud gratuitos:
+
+1. **PostgreSQL**: Use [Neon](https://neon.tech), [Supabase](https://supabase.com) ou [Railway](https://railway.app) (free tier)
+2. **Redis**: Use [Upstash](https://upstash.com) (free tier com 10k commands/dia)
+3. **Storage**: Use [Azure Blob Storage](https://azure.microsoft.com/services/storage/blobs/) ou [Cloudflare R2](https://cloudflare.com/products/r2) (10GB free)
+4. Configure as credenciais nos arquivos `.env`
+5. Rode `pnpm dev` para iniciar a aplicação
 
 ### 5. Configurar banco de dados (Prisma)
+
+**Se estiver usando a Opção A (Docker Compose completo):**
+As migrações são rodadas automaticamente quando a API inicia. Você não precisa fazer nada!
+
+**Se estiver usando a Opção B ou C:**
 
 ```bash
 # Gerar Prisma Client
@@ -167,17 +274,27 @@ pnpm db:migrate
 pnpm db:seed
 ```
 
-### 6. Configurar buckets no MinIO
+**Para rodar comandos do Prisma dentro do container Docker:**
 
-Acesse o MinIO Console em `http://localhost:9001` e crie os buckets:
+```bash
+# Gerar Prisma Client no container
+docker compose exec api pnpm prisma:generate
 
-1. Faça login com `minioadmin` / `minioadmin`
-2. Vá em "Buckets" → "Create Bucket"
-3. Crie os seguintes buckets:
-   - `uploads` (para vídeos originais)
-   - `videos` (para HLS processado)
-   - `certificates` (para PDFs de certificados)
-4. Configure acesso público de leitura (ou mantenha privado com URLs assinadas)
+# Rodar migrations no container
+docker compose exec api pnpm db:migrate
+
+# Popular banco com seed no container
+docker compose exec api pnpm db:seed
+
+# Abrir Prisma Studio (GUI para visualizar/editar dados)
+docker compose exec api pnpm db:studio
+```
+
+### 6. Azure Blob Storage
+
+O backend cria o container configurado em `AZURE_STORAGE_CONTAINER` automaticamente quando o `StorageService` inicia. Também aplicamos as regras de CORS definidas nas variáveis `AZURE_CORS_*`, a menos que `AZURE_AUTO_CONFIGURE_CORS=false`.
+
+Se quiser inspecionar os blobs localmente, abra o [Azure Storage Explorer](https://learn.microsoft.com/azure/storage/common/storage-explorer) ou o portal do Azure na seção **Storage Accounts > Containers** para o container escolhido. Você ainda pode criar pastas (`videos`, `thumbnails`, `certificates`) manualmente ou deixar o serviço criá-las no primeiro upload.
 
 ### 7. Iniciar aplicação em modo desenvolvimento
 
@@ -370,9 +487,9 @@ apps/web/
 - Rode: `docker compose logs postgres`
 
 ### Erro ao fazer upload
-- Verifique se o MinIO está rodando
-- Confira se os buckets foram criados
-- Verifique permissões dos buckets
+- Verifique se o Azure Blob Storage está acessível (credenciais e container)
+- Confira se o container definido em `AZURE_STORAGE_CONTAINER` existe e as regras de CORS permitem o domínio
+- Verifique permissões dos blobs/carpetas no Azure
 
 ### Erro de transcodificação
 - Verifique se o Redis está rodando (filas)

@@ -1,75 +1,164 @@
 version: '3.8'
 
+# ===========================================
+# AUTOON - Docker Compose para Desenvolvimento
+# ===========================================
+# Este arquivo orquestra todos os serviços necessários para rodar a plataforma AutoOn localmente
+# Serviços: PostgreSQL, Redis, API (Backend) e Web (Frontend)
+
 services:
-  # PostgreSQL Database
+  # ===========================================
+  # PostgreSQL - Banco de dados principal
+  # ===========================================
   postgres:
     image: postgres:16-alpine
     container_name: autoon-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: autoon
-      POSTGRES_PASSWORD: autoon123
-      POSTGRES_DB: autoon
+      POSTGRES_USER: ${POSTGRES_USER:-autoon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autoon123}
+      POSTGRES_DB: ${POSTGRES_DB:-autoon}
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - '5432:5432'
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - autoon-network
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U autoon']
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autoon} -d ${POSTGRES_DB:-autoon}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # MinIO (S3-compatible object storage)
-  minio:
-    image: minio/minio:latest
-    container_name: autoon-minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    ports:
-      - '9000:9000'
-      - '9001:9001'
-    volumes:
-      - minio_data:/data
-    networks:
-      - autoon-network
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
-      interval: 30s
-      timeout: 20s
-      retries: 3
-
-  # Redis (Queue and Cache)
+  # ===========================================
+  # Redis - Cache e filas de processamento
+  # ===========================================
   redis:
     image: redis:7-alpine
     container_name: autoon-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis123} --appendonly yes
     ports:
-      - '6379:6379'
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     networks:
       - autoon-network
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ===========================================
+  # API - Backend NestJS
+  # ===========================================
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: autoon-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-autoon}:${POSTGRES_PASSWORD:-autoon123}@postgres:5432/${POSTGRES_DB:-autoon}?schema=public
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+
+      # Storage provider
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-AZURE}
+
+      # Azure Blob Storage
+      AZURE_STORAGE_ACCOUNT: ${AZURE_STORAGE_ACCOUNT}
+      AZURE_STORAGE_KEY: ${AZURE_STORAGE_KEY}
+      AZURE_STORAGE_CONTAINER: ${AZURE_STORAGE_CONTAINER:-autoon-videos}
+      AZURE_STORAGE_ENDPOINT_SUFFIX: ${AZURE_STORAGE_ENDPOINT_SUFFIX:-core.windows.net}
+      AZURE_STORAGE_ENDPOINT: ${AZURE_STORAGE_ENDPOINT}
+      AZURE_UPLOAD_URL_TTL_SECONDS: ${AZURE_UPLOAD_URL_TTL_SECONDS:-3600}
+      AZURE_AUTO_CONFIGURE_CORS: ${AZURE_AUTO_CONFIGURE_CORS:-true}
+      AZURE_CORS_ALLOWED_ORIGINS: ${AZURE_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      AZURE_CORS_ALLOWED_METHODS: ${AZURE_CORS_ALLOWED_METHODS:-GET,HEAD,PUT,POST,DELETE,OPTIONS,PATCH}
+      AZURE_CORS_ALLOWED_HEADERS: ${AZURE_CORS_ALLOWED_HEADERS:-*}
+      AZURE_CORS_EXPOSED_HEADERS: ${AZURE_CORS_EXPOSED_HEADERS:-*}
+      AZURE_CORS_MAX_AGE: ${AZURE_CORS_MAX_AGE:-3600}
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-your-super-secret-refresh-key-change-in-production}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+
+      # CORS
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://localhost:80}
+
+      # App
+      NODE_ENV: ${NODE_ENV:-development}
+      API_PORT: 3000
+      APP_URL: ${APP_URL:-http://localhost:80}
+    ports:
+      - "${API_PORT:-3000}:3000"
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+      - /tmp/uploads:/tmp/uploads
+    networks:
+      - autoon-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ===========================================
+  # Web - Frontend Vue.js
+  # ===========================================
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    container_name: autoon-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    ports:
+      - "${WEB_PORT:-5173}:80"
+    networks:
+      - autoon-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# ===========================================
+# Volumes - Persistência de dados
+# ===========================================
 volumes:
   postgres_data:
     driver: local
-  minio_data:
-    driver: local
+    name: autoon-postgres-data
   redis_data:
     driver: local
+    name: autoon-redis-data
 
+# ===========================================
+# Networks - Rede interna dos containers
+# ===========================================
 networks:
   autoon-network:
     driver: bridge
+    name: autoon-network

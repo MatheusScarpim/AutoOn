@@ -120,7 +120,7 @@ git commit -m "🎉 Commit inicial - AutoOn EAD Platform
 - docker-compose.yml para desenvolvimento
 - docker-compose.prod.yml para produção
 - Dockerfiles otimizados (multi-stage build)
-- PostgreSQL + MinIO + Redis
+- PostgreSQL + Redis + Azure Blob Storage
 
 🔒 Segurança:
 - Senhas fortes configuradas
