@@ -18,12 +18,18 @@ async function bootstrap() {
   );
 
   // CORS
+  const DEFAULT_ORIGINS = ['http://localhost:5173', 'https://autoon-api.scarlat.dev.br'];
   const corsOriginEnv = process.env.CORS_ORIGIN;
   const corsOrigins = corsOriginEnv
-    ? corsOriginEnv.split(',').map(origin => origin.trim()).filter(Boolean)
-    : [];
+    ? corsOriginEnv
+        .split(',')
+        .map(origin => origin.trim())
+        .filter(Boolean)
+        .concat(DEFAULT_ORIGINS)
+        .filter((origin, index, self) => self.indexOf(origin) === index)
+    : DEFAULT_ORIGINS;
   app.enableCors({
-    origin: corsOrigins.length ? corsOrigins : ['http://localhost:5173'],
+    origin: corsOrigins,
     credentials: true,
   });
 
