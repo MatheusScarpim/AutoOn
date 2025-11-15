@@ -18,8 +18,12 @@ async function bootstrap() {
   );
 
   // CORS
+  const corsOriginEnv = process.env.CORS_ORIGIN;
+  const corsOrigins = corsOriginEnv
+    ? corsOriginEnv.split(',').map(origin => origin.trim()).filter(Boolean)
+    : [];
   app.enableCors({
-    origin: process.env.WEB_URL || 'http://localhost:5173',
+    origin: corsOrigins.length ? corsOrigins : ['http://localhost:5173'],
     credentials: true,
   });
 

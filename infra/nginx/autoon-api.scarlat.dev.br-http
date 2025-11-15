@@ -15,12 +15,6 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
 
-    # CORS headers (ajuste conforme necessário)
-    add_header Access-Control-Allow-Origin "http://autoon.scarlat.dev.br" always;
-    add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH" always;
-    add_header Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization" always;
-    add_header Access-Control-Allow-Credentials "true" always;
-
     # Handle preflight requests
     if ($request_method = OPTIONS) {
         return 204;
