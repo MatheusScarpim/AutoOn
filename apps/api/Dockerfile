@@ -20,12 +20,14 @@ COPY packages/utils/package.json ./packages/utils/package.json
 COPY packages/config/package.json ./packages/config/package.json
 COPY apps/api/package.json ./apps/api/package.json
 
+# Copiar código fonte do pacote de tipos para o install (tsc precisa dos arquivos)
+COPY packages/types/src ./packages/types/src
+COPY packages/types/tsconfig.json ./packages/types/tsconfig.json
+
 # Instalar dependências (isso cria os symlinks corretos do pnpm)
 RUN pnpm install --frozen-lockfile
 
 # Copiar código fonte dos packages
-COPY packages/types/src ./packages/types/src
-COPY packages/types/tsconfig.json ./packages/types/tsconfig.json
 COPY packages/utils/src ./packages/utils/src
 COPY packages/utils/tsconfig.json ./packages/utils/tsconfig.json
 COPY packages/config ./packages/config
