@@ -12,6 +12,13 @@ export enum VideoStatus {
   ERROR = 'ERROR',
 }
 
+export enum SubscriptionStatus {
+  ACTIVE = 'ACTIVE',
+  CANCELLED = 'CANCELLED',
+  EXPIRED = 'EXPIRED',
+  PENDING = 'PENDING',
+}
+
 export type StorageProvider = 's3' | 'azure';
 
 export enum QuestionType {
@@ -29,6 +36,26 @@ export interface User {
   role: UserRole;
   agreedToTerms: boolean;
   agreedToPrivacy: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  status: SubscriptionStatus;
+  planId: string;
+  planName: string;
+  planPrice: number;
+  autoRenew: boolean;
+  startDate?: Date;
+  endDate?: Date;
+  cancelledAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -310,6 +337,19 @@ export interface QuizResultDto {
     isCorrect: boolean;
     correctAnswer: string[];
   }[];
+}
+
+export interface CreateSubscriptionDto extends Record<string, unknown> {
+  userId: string;
+  planId: string;
+  planName?: string;
+  planPrice?: number;
+  autoRenew?: boolean;
+}
+
+export interface UpdateSubscriptionDto extends Record<string, unknown> {
+  status?: SubscriptionStatus;
+  autoRenew?: boolean;
 }
 
 // Pagination

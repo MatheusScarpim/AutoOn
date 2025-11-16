@@ -52,6 +52,21 @@ export class AdminService {
             createdCourses: true,
           },
         },
+        subscription: {
+          select: {
+            id: true,
+            status: true,
+            planId: true,
+            planName: true,
+            planPrice: true,
+            autoRenew: true,
+            startDate: true,
+            endDate: true,
+            cancelledAt: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
