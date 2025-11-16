@@ -257,7 +257,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { SubscriptionStatus, UserRole } from '@autoon/types'
 import { isApiError } from '@/services/http'
 import { listAdminUsers, type AdminUser } from '@/services/admin'
@@ -493,7 +493,13 @@ const toggleAutoRenew = async (user: AdminUser) => {
 
 resetFormDefaults()
 
-onMounted(async () => {
-  await loadUsers({ page: 1 })
-})
+watch(
+  () => authStore.accessToken,
+  async (token) => {
+    if (token) {
+      await loadUsers({ page: 1 })
+    }
+  },
+  { immediate: true },
+)
 </script>
